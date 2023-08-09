@@ -80,6 +80,19 @@
                         Available events
                     </div>
 
+                    <p th:if="${file.getHeapAllocationSamples().size() > 0}">
+                        <label>
+                            <input name="event" type="radio"
+                                   onclick="return updatePages(this)"
+                                   th:data-current="${currentId}"
+                                   th:data-total-time-table-url="'/stateful-jfr/single/table/total/execution?id=' + ${currentId}"
+                                   th:data-self-time-table-url="'/stateful-jfr/single/table/self/execution?id=' + ${currentId}"
+                                   th:data-flames-url="'/stateful-jfr/single/flames/execution?id=' + ${currentId}"
+                            />
+                            <span>Heap Allocation samples</span>
+                        </label>
+                    </p>
+
                     <p th:if="${file.getExecutionSamples().size() > 0}">
                         <label>
                             <input name="event" type="radio"

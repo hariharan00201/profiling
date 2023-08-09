@@ -5,6 +5,7 @@ import org.openjdk.jmc.common.IMCFrame;
 import org.openjdk.jmc.common.IMCMethod;
 import org.openjdk.jmc.common.IMCStackTrace;
 import org.openjdk.jmc.common.unit.ITypedQuantity;
+import org.openjdk.jmc.common.unit.StructContentType;
 import org.openjdk.jmc.common.unit.UnitLookup;
 import org.openjdk.jmc.flightrecorder.JfrAttributes;
 import org.openjdk.jmc.flightrecorder.internal.EventArray;
@@ -19,12 +20,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.function.Function;
 
-import static pl.ks.jfr.parser.JfrParserHelper.isAsyncAllocNewTLABEvent;
-import static pl.ks.jfr.parser.JfrParserHelper.isAsyncAllocOutsideTLABEvent;
-import static pl.ks.jfr.parser.JfrParserHelper.isCpuLoadEvent;
-import static pl.ks.jfr.parser.JfrParserHelper.isExecutionSampleEvent;
-import static pl.ks.jfr.parser.JfrParserHelper.isLockEvent;
-import static pl.ks.jfr.parser.JfrParserHelper.replaceCharacter;
+import static pl.ks.jfr.parser.JfrParserHelper.*;
 import static pl.ks.jfr.parser.ParserUtil.getFlightRecording;
 
 @Slf4j
@@ -184,6 +180,11 @@ class JfrParserImpl implements JfrParser {
             jfrParsedFile.addFilename(filename);
             EventArrays flightRecording = getFlightRecording(file);
 
+//            for (EventArray a : flightRecording.getArrays()) {
+//                StructContentType structContentType = (StructContentType) a.getType();
+//                System.out.println(structContentType.getIdentifier());
+//            }
+
             for (EventArray eventArray : flightRecording.getArrays()) {
                 if (isExecutionSampleEvent(eventArray)) {
                     processExecutionSample(jfrParsedFile, eventArray, filename);
@@ -195,6 +196,9 @@ class JfrParserImpl implements JfrParser {
                     processAllocEvent(jfrParsedFile, eventArray, filename, true);
                 } else if (isCpuLoadEvent(eventArray)) {
                     processCpuEvent(jfrParsedFile, eventArray, filename);
+                } else if (isHeapAllocEvent(eventArray)) {
+                    System.out.println("successfully found heap alloc event");
+                    processHeapAllocEvent(jfrParsedFile, eventArray, filename);
                 }
             }
         } catch (Exception e) {
@@ -278,6 +282,40 @@ class JfrParserImpl implements JfrParser {
                     .objectClass(jfrParsedFile.getCanonicalString(accessors.getObjectClassAccessor().getMember(event).getFullName()))
                     .size(accessors.getAllocationSizeAccessor().getMember(event).longValue())
                     .outsideTLAB(outsideTLAB)
+                    .build()
+            );
+        });
+
+    }
+
+    private static void processHeapAllocEvent(JfrParsedFile jfrParsedFile, EventArray eventArray, String filename) {
+        System.out.println("called");
+        JfrAccessors accessors = JfrAccessors.builder()
+                .stackTraceAccessor(JfrAttributes.EVENT_STACKTRACE.getAccessor(eventArray.getType()))
+                .threadAccessor(JfrAttributes.EVENT_THREAD.getAccessor(eventArray.getType()))
+                .startTimeAccessor(JfrAttributes.START_TIME.getAccessor(eventArray.getType()))
+                .allocationSizeAccessor(JfrParserHelper.findAllocSizeAccessor(eventArray))
+                .objectClassAccessor(JfrParserHelper.findObjectClassAccessor(eventArray))
+                .ecidAccessor(JfrParserHelper.findEcidAccessor(eventArray))
+                .build();
+        System.out.println(eventArray.getEvents().length);
+        Arrays.stream(eventArray.getEvents()).parallel().forEach(event -> {
+            System.out.println("added");
+            IMCStackTrace stackTrace = accessors.getStackTraceAccessor().getMember(event);
+            if (stackTrace == null) {
+                return;
+            }
+
+            List<? extends IMCFrame> frames = stackTrace.getFrames();
+            jfrParsedFile.addHeapAllocationSampleEvent(JfrParsedHeapAllocationEvent.builder()
+                    .correlationId(accessors.getEcidAccessor() != null ? accessors.getEcidAccessor().getMember(event).longValue() : 0L)
+                    .filename(filename)
+                    .threadName(jfrParsedFile.getCanonicalString(accessors.getThreadAccessor().getMember(event).getThreadName()))
+                    .eventTime(new Date(accessors.getStartTimeAccessor().getMember(event).longValue() / 1000000).toInstant())
+                    .stackTrace(getStackTrace(jfrParsedFile, frames))
+                    .lineNumbers(getLineNumbers(jfrParsedFile, frames))
+                    .objectClass(jfrParsedFile.getCanonicalString(accessors.getObjectClassAccessor().getMember(event).getFullName()))
+                    .size(accessors.getAllocationSizeAccessor().getMember(event).longValue())
                     .build()
             );
         });

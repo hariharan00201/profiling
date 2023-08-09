@@ -16,6 +16,10 @@
 package pl.ks.viewer.flamegraph;
 
 import com.google.gson.Gson;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -30,7 +34,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
-
 public class FlameGraph {
     public static final byte FRAME_INTERPRETED = 0;
     public static final byte FRAME_JIT_COMPILED = 1;
@@ -59,7 +62,9 @@ public class FlameGraph {
     public void parse() throws IOException {
         parse(new InputStreamReader(new FileInputStream(args.input), StandardCharsets.UTF_8));
     }
-
+    public HashMap<String ,Long> getResultHelper(){
+        return Result;
+    }
     public void parse(Reader in) throws IOException {
         try (BufferedReader br = new BufferedReader(in)) {
             parse(br);
@@ -147,6 +152,7 @@ public class FlameGraph {
     }
 
     public void dump() throws IOException {
+        System.out.println("args output  "+args.output);
         if (args.output == null) {
             dump(System.out);
         } else {
@@ -249,6 +255,67 @@ public class FlameGraph {
             x += child.total;
         }
     }
+    List<FDataHolder> fDataHolders = new ArrayList<>();
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    static class FDataHolder {
+        int level;
+        long left;
+        long width;
+        int type;
+        String title;
+        long inln;
+        long c1;
+        long Int;
+    }
+
+    public List<FDataHolder> flameFDataGeneratorHelper(){
+        return flameFDataGenerator("all",root,0,0);
+    }
+
+    private List<FDataHolder> flameFDataGenerator(String title, Frame frame, int level, long x) {
+        int type = frame.getType();
+        if (type == FRAME_KERNEL) {
+            title = stripSuffix(title);
+        }
+
+        if ((frame.inlined | frame.c1 | frame.interpreted) != 0 && frame.inlined < frame.total && frame.interpreted < frame.total) {
+            fDataHolders.add(FDataHolder.builder()
+                    .level(level)
+                    .left(x)
+                    .width(frame.total)
+                    .type(type)
+                    .title(escape(title))
+                    .inln(frame.inlined)
+                    .c1(frame.c1)
+                    .Int(frame.interpreted)
+                    .build());
+//            out.println("f(" + level + "," + x + "," + frame.total + "," + type + ",'" + escape(title) + "'," +
+//                    frame.inlined + "," + frame.c1 + "," + frame.interpreted + ")");
+        } else {
+            fDataHolders.add(FDataHolder.builder()
+                    .level(level)
+                    .left(x)
+                    .width(frame.total)
+                    .type(type)
+                    .title(escape(title))
+                    .build());
+//            out.println("f(" + level + "," + x + "," + frame.total + "," + type + ",'" + escape(title) + "')");
+        }
+
+        x += frame.self;
+        for (Map.Entry<String, Frame> e : frame.entrySet()) {
+            Frame child = e.getValue();
+            if (child.total >= mintotal) {
+                flameFDataGenerator(e.getKey(), child, level + 1, x);
+            }
+            x += child.total;
+        }
+        return fDataHolders;
+    }
+
 
     private void printFrame(PrintStream out, String title, Frame frame, int level, long x) {
         int type = frame.getType();
@@ -257,9 +324,26 @@ public class FlameGraph {
         }
 
         if ((frame.inlined | frame.c1 | frame.interpreted) != 0 && frame.inlined < frame.total && frame.interpreted < frame.total) {
+//            fDataHolders.add(FDataHolder.builder()
+//                            .level(level)
+//                            .left(x)
+//                            .width(frame.total)
+//                            .type(type)
+//                            .title(escape(title))
+//                            .inln(frame.inlined)
+//                            .c1(frame.c1)
+//                            .Int(frame.interpreted)
+//                            .build());
             out.println("f(" + level + "," + x + "," + frame.total + "," + type + ",'" + escape(title) + "'," +
                     frame.inlined + "," + frame.c1 + "," + frame.interpreted + ")");
         } else {
+//            fDataHolders.add(FDataHolder.builder()
+//                    .level(level)
+//                    .left(x)
+//                    .width(frame.total)
+//                    .type(type)
+//                    .title(escape(title))
+//                    .build());
             out.println("f(" + level + "," + x + "," + frame.total + "," + type + ",'" + escape(title) + "')");
         }
 
@@ -271,6 +355,7 @@ public class FlameGraph {
             }
             x += child.total;
         }
+
     }
 
     private boolean excludeTrace(String[] trace) {

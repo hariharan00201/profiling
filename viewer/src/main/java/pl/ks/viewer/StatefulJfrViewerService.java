@@ -1,7 +1,6 @@
 package pl.ks.viewer;
 
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import pl.ks.collapsed.CollapsedStack;
 import pl.ks.jfr.parser.JfrEcidInfo;
@@ -15,6 +14,7 @@ import pl.ks.jfr.parser.JfrParsedLockEvent;
 import pl.ks.jfr.parser.JfrParser;
 import pl.ks.viewer.flamegraph.FlameGraphExecutor;
 
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -35,6 +35,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
+import static pl.ks.viewer.JfrControllerCommon.createConfig;
+import static pl.ks.viewer.TimeTable.Type.SELF_TIME;
+import static pl.ks.viewer.TimeTable.Type.TOTAL_TIME;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -100,6 +104,27 @@ class StatefulJfrViewerService {
         JfrParsedFile jfrParsedFile = parsedFiles.get(uuid);
         CollapsedStack collapsed = jfrParsedFile.asCollapsed(getFilteredExecutionSamples(config, jfrParsedFile),
                 config.getAdditionalLevels(), JfrParsedExecutionSampleEvent::getFullStackTrace);
+        String CollapsedDir = "C:\\Users\\haris\\Downloads" + "/";
+
+        OutputStream os = null;
+        try {
+            os = new FileOutputStream(new File(CollapsedDir+"Collapsed1.collapsed"));
+            for(Map.Entry a : collapsed.stacks().entrySet()){
+                os.write((a.getKey()+" "+a.getValue()).getBytes());
+                os.write("\n".getBytes());
+//                writer.close();
+
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        System.out.println(CollapsedDir);
+//        for(Map.Entry a : collapsed.stacks().entrySet()){
+//            (a.getKey()+" "+a.getValue());
+//        }
         return flameGraphExecutor.generateFlameGraphHtml5(collapsed, "Execution samples", config.isReverseOn());
     }
 
@@ -308,4 +333,47 @@ class StatefulJfrViewerService {
         addNewFile(childUuid, childFile);
         return childUuid;
     }
+
+    public CombinedTimeTable combineTotalSelfTimeTable(UUID uuid, Map<String, String> params) {
+        TimeTable total = getExecutionSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME);
+        TimeTable self = getExecutionSamplesTimeStats(uuid, createConfig(params), SELF_TIME);
+//        CombinedTimeTable combinedTimeTable = CombinedTimeTable.builder().build()
+        HashMap<String, CombinedTimeTable.CombinedRow> temp = new HashMap<>();
+        for(TimeTable.Row a : total.getRows()){
+            temp.put(a.getMethodName(), CombinedTimeTable.CombinedRow.builder().methodName(a.getMethodName()).totalPercent(a.getPercent()).totalSamples(a.getSamples()).build());
+        }
+        List<CombinedTimeTable.CombinedRow> combinedRows = new ArrayList<>();
+        for (TimeTable.Row a : self.getRows()){
+            CombinedTimeTable.CombinedRow combinedRow = temp.get(a.getMethodName());
+            combinedRow.setSelfPercent(a.getPercent());
+            combinedRow.setSelfSamples(a.getSamples());
+            combinedRows.add(combinedRow);
+            temp.put(a.getMethodName(),combinedRow);
+        }
+
+        return CombinedTimeTable.builder().rows(combinedRows).fileId(uuid).build();
+    }
+    @Value
+    @Builder
+    static public class CombinedTimeTable {
+        UUID fileId;
+        List<CombinedRow> rows;
+
+//        @Value
+        @Builder
+        @Data
+        public static class CombinedRow {
+            String methodName;
+            String totalPercent;
+            long totalSamples;
+            String selfPercent;
+            long selfSamples;
+        }
+
+        public enum Type {
+            TOTAL_TIME,
+            SELF_TIME,
+        }
+    }
+
 }

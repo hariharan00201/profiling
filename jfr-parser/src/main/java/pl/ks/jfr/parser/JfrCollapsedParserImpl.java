@@ -47,6 +47,7 @@ import org.openjdk.jmc.common.item.IItem;
 import org.openjdk.jmc.common.item.IMemberAccessor;
 import org.openjdk.jmc.common.unit.IQuantity;
 import org.openjdk.jmc.common.unit.ITypedQuantity;
+import org.openjdk.jmc.common.unit.StructContentType;
 import org.openjdk.jmc.flightrecorder.JfrAttributes;
 import org.openjdk.jmc.flightrecorder.internal.EventArray;
 import org.openjdk.jmc.flightrecorder.internal.EventArrays;
@@ -125,7 +126,12 @@ class JfrCollapsedParserImpl implements JfrCollapsedParser {
 
         try {
             EventArrays flightRecording = getFlightRecording(context.getFile());
-
+//            System.out.println("Entered");
+//            for(EventArray a : flightRecording.getArrays())
+//            {
+//                StructContentType structContentType = (StructContentType) a.getType();
+//                System.out.println(structContentType.getIdentifier());
+//            }
             for (EventArray eventArray : flightRecording.getArrays()) {
                 if (isExecutionSampleEvent(eventArray)) {
                     processWallEvent(context, eventArray);

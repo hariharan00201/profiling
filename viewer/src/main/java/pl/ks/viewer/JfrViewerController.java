@@ -45,6 +45,7 @@ class JfrViewerController {
     String upload(Model model,
                   @RequestParam Map<String, String> params,
                   @RequestParam("files") MultipartFile[] files) throws Exception {
+        System.out.println("Entered upload jfr");
         List<String> savedCopies = new ArrayList<>(files.length);
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename();

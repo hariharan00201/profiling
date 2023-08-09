@@ -15,22 +15,22 @@
  */
 package pl.ks.viewer;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.apache.commons.compress.utils.IOUtils;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -57,12 +57,13 @@ class CollapsedStackViewerController {
     }
 
     @PostMapping("/upload-collapsed")
-    String upload(Model model,
+    ResponseEntity<?> upload(
                   @RequestParam("file") MultipartFile file,
                   @RequestParam("filter") String filter,
                   @RequestParam("title") String title,
                   @RequestParam("totalTimeThreshold") BigDecimal totalTimeThreshold,
                   @RequestParam("selfTimeThreshold") BigDecimal selfTimeThreshold) throws Exception {
+        System.out.println("Entered post of upload "+totalTimeThreshold);
         String originalFilename = file.getOriginalFilename();
         InputStream inputStream = StorageUtils.createCopy(TempFileUtils.TEMP_DIR, originalFilename, file.getInputStream());
         String uncompressedFileName = "collapsed-stack-" + UUID.randomUUID().toString() + ".log";
@@ -72,11 +73,65 @@ class CollapsedStackViewerController {
             copyFileWithFilter(filter, inputStream, uncompressedFileName);
         }
 
-        model.addAttribute("welcomePage", WelcomePage.builder()
-                .pages(collapsedStackPageCreator.generatePages(uncompressedFileName, title, totalTimeThreshold, selfTimeThreshold))
-                .title(title)
-                .build());
-        return "collapsed";
+//        model.addAttribute("welcomePage", WelcomePage.builder()
+//                .pages(collapsedStackPageCreator.generatePages(uncompressedFileName, title, totalTimeThreshold, selfTimeThreshold))
+//                .title(title)
+//                .build());
+        Gson gson = new GsonBuilder().create();
+        String json = gson.toJson(collapsedStackPageCreator.generatePages(uncompressedFileName, title, totalTimeThreshold, selfTimeThreshold));
+        return ResponseEntity.ok(json);
+    }
+
+    @PostMapping("/upload-multi-collapsed")
+    ResponseEntity<?> uploadMultiCollapsed(
+            @RequestParam("start") Integer start,
+            @RequestParam("end") Integer end,
+            @RequestParam("filter") String filter,
+            @RequestParam("title") String title,
+            @RequestParam("totalTimeThreshold") BigDecimal totalTimeThreshold,
+            @RequestParam("selfTimeThreshold") BigDecimal selfTimeThreshold)throws Exception {
+        System.out.println("Entered post of multiple upload ");
+        String originalFilename = start+" - "+end+" timestamp collapsed file";
+        InputStream inputStream = StorageUtils.createCopy(TempFileUtils.TEMP_DIR, originalFilename, combineCollapsedFiles(start,end));
+        String uncompressedFileName = "multi-collapsed-stack-" + UUID.randomUUID().toString() + ".log";
+        if (StringUtils.isEmpty(filter)) {
+            IOUtils.copy(inputStream, new FileOutputStream(TempFileUtils.TEMP_DIR + uncompressedFileName));
+        } else {
+            copyFileWithFilter(filter, inputStream, uncompressedFileName);
+        }
+
+//        model.addAttribute("welcomePage", WelcomePage.builder()
+//                .pages(collapsedStackPageCreator.generatePages(uncompressedFileName, title, totalTimeThreshold, selfTimeThreshold))
+//                .title(title)
+//                .build());
+
+
+        Gson gson = new GsonBuilder().create();
+        String json = gson.toJson(collapsedStackPageCreator.generatePages(uncompressedFileName, title, totalTimeThreshold, selfTimeThreshold));
+        return ResponseEntity.ok(json);
+    }
+
+    private InputStream combineCollapsedFiles(Integer start, Integer end) throws FileNotFoundException {
+        String directoryPath = "viewer\\src\\main\\resources\\public\\Collapsed";
+        File directory = new File(directoryPath);
+        List<InputStream> inputStreams = new ArrayList<>();
+        if (directory.isDirectory()) {
+            File[] files = directory.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile()) {
+                        String firstHalf = file.getName().split("\\.")[0];
+//                        System.out.println(file.getName());
+                        if(start <= Integer.parseInt(firstHalf) && end >= Integer.parseInt(firstHalf)){
+                            inputStreams.add(new FileInputStream(directoryPath+"/"+file.getName()));
+                        }
+                    }
+                }
+            }
+        } else {
+            System.out.println("Not a valid directory path: " + directoryPath);
+        }
+        return new SequenceInputStream(Collections.enumeration(inputStreams));
     }
 
     @PostMapping("/upload-temp")
@@ -113,12 +168,17 @@ class CollapsedStackViewerController {
                          @RequestParam("title") String title) throws Exception {
         String collapsedFilePath = TempFileUtils.getFilePath(collapsed);
         String outputHtmlFilePath = TempFileUtils.getFilePath(collapsed + ".html");
-        flameGraphExecutor.generateFlameGraphHtml5(collapsedFilePath, outputHtmlFilePath, "Flame graph - " + title, false);
+        Gson gson = new GsonBuilder().create();
+        String json = gson.toJson(flameGraphExecutor.generateFlameGraphHtml5(collapsedFilePath, outputHtmlFilePath, "Flame graph - " + title, false));
+
+
         byte[] response = null;
         try (InputStream inputStream = new FileInputStream(outputHtmlFilePath);) {
             response = IOUtils.toByteArray(inputStream);
         }
+        System.out.println(response.length);
         Files.delete(Paths.get(outputHtmlFilePath));
+//        return ResponseEntity.ok(json);
         return response;
     }
 

@@ -15,8 +15,11 @@
  */
 package pl.ks.viewer;
 
-import lombok.RequiredArgsConstructor;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import lombok.*;
 import org.apache.commons.compress.utils.IOUtils;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,10 +31,7 @@ import pl.ks.jfr.parser.JfrParsedFile;
 import pl.ks.viewer.io.TempFileUtils;
 
 import java.io.FileOutputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static pl.ks.viewer.JfrControllerCommon.createConfig;
 import static pl.ks.viewer.TimeTable.Type.SELF_TIME;
@@ -42,53 +42,81 @@ import static pl.ks.viewer.TimeTable.Type.TOTAL_TIME;
 class StatefulJfrViewerController {
     public static final String ON = "on";
     private final StatefulJfrViewerService jfrViewerService;
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    static class Result {
+        List<StatefulJfrFile> statefulJfrFiles;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    static class JFRData {
+        JfrParsedFile jfrParsedFile;
+        UUID uuid;
+    }
+
+    Gson gson = new GsonBuilder().create();
 
     @GetMapping("/upload-stateful-jfr")
-    String uploadJfr(Model model) {
-        model.addAttribute("files", jfrViewerService.getFiles());
-        return "upload-stateful-jfr";
+    ResponseEntity<?> uploadJfr() {
+//        model.addAttribute("files", jfrViewerService.getFiles());
+//        System.out.println(jfrViewerService.getFiles().toString());
+        Result res = Result.builder()
+                .statefulJfrFiles(jfrViewerService.getFiles()).build();
+
+        String json = gson.toJson(res);
+        return ResponseEntity.ok(json);
     }
 
     @PostMapping("/upload-stateful-jfr")
-    String upload(Model model, @RequestParam("files") MultipartFile[] files) throws Exception {
-        List<String> savedCopies = new ArrayList<>(files.length);
-        for (MultipartFile file : files) {
+    ResponseEntity<?> upload(@RequestParam("files") MultipartFile files) throws Exception {
+        List<String> savedCopies = new ArrayList<>();
+        for (MultipartFile file : Arrays.asList(files)) {
             String originalFilename = file.getOriginalFilename();
             String filePath = TempFileUtils.TEMP_DIR + originalFilename;
             IOUtils.copy(file.getInputStream(), new FileOutputStream(filePath));
             savedCopies.add(filePath);
         }
         jfrViewerService.parseNewFiles(savedCopies);
-        return uploadJfr(model);
+        return uploadJfr();
     }
 
     @GetMapping("/stateful-jfr/single")
-    String showJfr(Model model, @RequestParam("id") UUID uuid) {
+    ResponseEntity<?> showJfr(@RequestParam("id") UUID uuid) {
         JfrParsedFile file = jfrViewerService.getFile(uuid);
-        model.addAttribute("file", file);
-        model.addAttribute("currentId", uuid);
-        return "uploaded-stateful-jfr";
+//        model.addAttribute("file", file);
+//        model.addAttribute("currentId", uuid);
+        JFRData res = JFRData.builder().jfrParsedFile(file).uuid(uuid).build();
+        String json = gson.toJson(res);
+        return ResponseEntity.ok(json);
     }
 
     @GetMapping("/stateful-jfr/single/remove")
-    String removeJfr(Model model, @RequestParam("id") UUID uuid) {
+    ResponseEntity<?> removeJfr(@RequestParam("id") UUID uuid) {
         jfrViewerService.remove(uuid);
-        return uploadJfr(model);
+        return uploadJfr();
     }
 
     @GetMapping("/stateful-jfr/single/trim")
-    String trimToMethod(Model model, @RequestParam("id") UUID uuid,
+    ResponseEntity<?> trimToMethod(Model model, @RequestParam("id") UUID uuid,
                         @RequestParam("methodName") String methodName,
                         @RequestParam("direction") JfrParsedFile.Direction direction) {
         jfrViewerService.trimToMethod(uuid, methodName, direction);
-        return uploadJfr(model);
+        return uploadJfr();
     }
 
     @ResponseBody
     @GetMapping("/stateful-jfr/single/flames/execution")
     byte[] getExecutionSamplesFlameGraph(@RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
+//        for(Map.Entry a : params.entrySet())
+//        System.out.println(a.getKey()+" = "+a.getValue());
         return jfrViewerService.getExecutionSamplesFlameGraph(uuid, createConfig(params));
     }
+
 
     @ResponseBody
     @GetMapping("/stateful-jfr/single/flames/allocation/count")
@@ -130,6 +158,13 @@ class StatefulJfrViewerController {
     String getExecutionTotalTimeTable(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
         model.addAttribute("table", jfrViewerService.getExecutionSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
         return "uploaded-stateful-total-time-table";
+    }
+
+    @GetMapping("/stateful-jfr/single/table/totalself/execution")
+    String getExecutionTotalSelfTimeTable(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
+
+        model.addAttribute("table", jfrViewerService.combineTotalSelfTimeTable(uuid,params));
+        return "uploaded-stateful-self-total-time-table";
     }
 
     @GetMapping("/stateful-jfr/single/table/total/allocation/count")

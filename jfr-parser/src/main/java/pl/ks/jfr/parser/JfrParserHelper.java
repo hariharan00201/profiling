@@ -56,6 +56,14 @@ class JfrParserHelper {
         return false;
     }
 
+    static boolean isHeapAllocEvent(EventArray event) {
+        if (event.getType() instanceof StructContentType) {
+            StructContentType structContentType = (StructContentType) event.getType();
+            return structContentType.getIdentifier().equals("jdk.PSHeapSummary");
+        }
+        return false;
+    }
+
     static boolean isExecutionSampleEvent(EventArray event) {
         if (event.getType() instanceof StructContentType) {
             StructContentType structContentType = (StructContentType) event.getType();
