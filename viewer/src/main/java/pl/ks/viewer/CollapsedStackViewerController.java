@@ -63,10 +63,14 @@ class CollapsedStackViewerController {
                   @RequestParam("title") String title,
                   @RequestParam("totalTimeThreshold") BigDecimal totalTimeThreshold,
                   @RequestParam("selfTimeThreshold") BigDecimal selfTimeThreshold) throws Exception {
+
         System.out.println("Entered post of upload "+totalTimeThreshold);
         String originalFilename = file.getOriginalFilename();
         InputStream inputStream = StorageUtils.createCopy(TempFileUtils.TEMP_DIR, originalFilename, file.getInputStream());
-        String uncompressedFileName = "collapsed-stack-" + UUID.randomUUID().toString() + ".log";
+        String prefix = "collapsed-stack-" + UUID.randomUUID().toString();
+        saveFileTo(file,"../diffFGrav/web/collapsed"+prefix+".collapsed");
+
+        String uncompressedFileName = prefix + ".log";
         if (StringUtils.isEmpty(filter)) {
             IOUtils.copy(inputStream, new FileOutputStream(TempFileUtils.TEMP_DIR + uncompressedFileName));
         } else {
@@ -80,6 +84,31 @@ class CollapsedStackViewerController {
         Gson gson = new GsonBuilder().create();
         String json = gson.toJson(collapsedStackPageCreator.generatePages(uncompressedFileName, title, totalTimeThreshold, selfTimeThreshold));
         return ResponseEntity.ok(json);
+    }
+
+    private void saveFileTo(MultipartFile file, String filePath) throws IOException {
+
+        InputStream inputStream = file.getInputStream();
+
+        // Create a directory if it doesn't exist (optional)
+        File directory = new File(filePath).getParentFile();
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
+        // Create an output stream to write the file
+        OutputStream outputStream = new FileOutputStream(filePath);
+
+        // Read from the input stream and write to the output stream in chunks
+        byte[] buffer = new byte[4096]; // Adjust buffer size as needed
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+        }
+
+        // Close streams
+        inputStream.close();
+        outputStream.close();
     }
 
     @PostMapping("/upload-multi-collapsed")
