@@ -104,24 +104,24 @@ class StatefulJfrViewerService {
         JfrParsedFile jfrParsedFile = parsedFiles.get(uuid);
         CollapsedStack collapsed = jfrParsedFile.asCollapsed(getFilteredExecutionSamples(config, jfrParsedFile),
                 config.getAdditionalLevels(), JfrParsedExecutionSampleEvent::getFullStackTrace);
-        String CollapsedDir = "C:\\Users\\haris\\Downloads" + "/";
+//        String CollapsedDir = "C:\\Users\\haris\\Downloads" + "/";
 
-        OutputStream os = null;
-        try {
-            os = new FileOutputStream(new File(CollapsedDir+"Collapsed1.collapsed"));
-            for(Map.Entry a : collapsed.stacks().entrySet()){
-                os.write((a.getKey()+" "+a.getValue()).getBytes());
-                os.write("\n".getBytes());
-//                writer.close();
+//        OutputStream os = null;
+//        try {
+//            os = new FileOutputStream(new File(CollapsedDir+"Collapsed1.collapsed"));
+//            for(Map.Entry a : collapsed.stacks().entrySet()){
+//                os.write((a.getKey()+" "+a.getValue()).getBytes());
+//                os.write("\n".getBytes());
+////                writer.close();
 
-            }
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+//            }
+//        } catch (FileNotFoundException e) {
+//            throw new RuntimeException(e);
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
 
-        System.out.println(CollapsedDir);
+//        System.out.println(CollapsedDir);
 //        for(Map.Entry a : collapsed.stacks().entrySet()){
 //            (a.getKey()+" "+a.getValue());
 //        }
