@@ -67,9 +67,9 @@ class CollapsedStackViewerController {
         System.out.println("Entered post of upload "+totalTimeThreshold);
         String originalFilename = file.getOriginalFilename();
         InputStream inputStream = StorageUtils.createCopy(TempFileUtils.TEMP_DIR, originalFilename, file.getInputStream());
+        String homeDir = System.getProperty("user.home")+"/diffFGrav/web/collapsed";
         String prefix = "collapsed-stack-" + UUID.randomUUID().toString();
-        saveFileTo(file,"../diffFGrav/web/collapsed"+prefix+".collapsed");
-
+        saveFileTo(file,homeDir+"/"+prefix+".collapsed");
         String uncompressedFileName = prefix + ".log";
         if (StringUtils.isEmpty(filter)) {
             IOUtils.copy(inputStream, new FileOutputStream(TempFileUtils.TEMP_DIR + uncompressedFileName));
