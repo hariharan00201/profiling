@@ -14,7 +14,6 @@ import pl.ks.jfr.parser.JfrParsedLockEvent;
 import pl.ks.jfr.parser.JfrParser;
 import pl.ks.viewer.flamegraph.FlameGraphExecutor;
 
-import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -334,10 +333,14 @@ class StatefulJfrViewerService {
         return childUuid;
     }
 
-    public CombinedTimeTable combineTotalSelfTimeTable(UUID uuid, Map<String, String> params) {
+    public CombinedTimeTable combineExecutionTotalSelfTimeTable(UUID uuid, Map<String, String> params) {
         TimeTable total = getExecutionSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME);
         TimeTable self = getExecutionSamplesTimeStats(uuid, createConfig(params), SELF_TIME);
 //        CombinedTimeTable combinedTimeTable = CombinedTimeTable.builder().build()
+        return combineTotalSelfHelper(total,self,uuid);
+    }
+
+    private CombinedTimeTable combineTotalSelfHelper(TimeTable total, TimeTable self, UUID uuid) {
         HashMap<String, CombinedTimeTable.CombinedRow> temp = new HashMap<>();
         for(TimeTable.Row a : total.getRows()){
             temp.put(a.getMethodName(), CombinedTimeTable.CombinedRow.builder().methodName(a.getMethodName()).totalPercent(a.getPercent()).totalSamples(a.getSamples()).build());
@@ -353,6 +356,36 @@ class StatefulJfrViewerService {
 
         return CombinedTimeTable.builder().rows(combinedRows).fileId(uuid).build();
     }
+
+    public CombinedTimeTable combineAllocationCountTotalSelfTimeStats(UUID uuid, Map<String, String> params) {
+        TimeTable total = getAllocationCountSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME);
+        TimeTable self = getAllocationCountSamplesTimeStats(uuid, createConfig(params), SELF_TIME);
+//        CombinedTimeTable combinedTimeTable = CombinedTimeTable.builder().build()
+        return combineTotalSelfHelper(total,self,uuid);
+    }
+
+    public CombinedTimeTable combineAllocationSizeTotalSelfTimeStats(UUID uuid, Map<String, String> params) {
+        TimeTable total = getAllocationSizeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME);
+        TimeTable self = getAllocationSizeSamplesTimeStats(uuid, createConfig(params), SELF_TIME);
+//        CombinedTimeTable combinedTimeTable = CombinedTimeTable.builder().build()
+        return combineTotalSelfHelper(total,self,uuid);
+    }
+
+    public CombinedTimeTable combineLockCountSamplesTotalSelfTimeStats(UUID uuid, Map<String, String> params) {
+        TimeTable total = getLockCountSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME);
+        TimeTable self = getLockCountSamplesTimeStats(uuid, createConfig(params), SELF_TIME);
+//        CombinedTimeTable combinedTimeTable = CombinedTimeTable.builder().build()
+        return combineTotalSelfHelper(total,self,uuid);
+    }
+
+    public Object combineLockTimeSamplesTotalSelfTimeStats(UUID uuid, Map<String, String> params) {
+        TimeTable total = getLockTimeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME);
+        TimeTable self = getLockTimeSamplesTimeStats(uuid, createConfig(params), SELF_TIME);
+//        CombinedTimeTable combinedTimeTable = CombinedTimeTable.builder().build()
+        return combineTotalSelfHelper(total,self,uuid);
+    }
+
+
     @Value
     @Builder
     static public class CombinedTimeTable {

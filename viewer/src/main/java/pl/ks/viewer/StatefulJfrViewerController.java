@@ -164,10 +164,10 @@ class StatefulJfrViewerController {
     }
 
     @GetMapping("/stateful-jfr/single/table/totalself/execution")
-    ResponseEntity<?> getExecutionTotalSelfTimeTable(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
+    ResponseEntity<?> getExecutionTotalSelfTimeStats(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
 
 //        model.addAttribute("table", jfrViewerService.combineTotalSelfTimeTable(uuid,params));
-        String json = gson.toJson(jfrViewerService.combineTotalSelfTimeTable(uuid,params));
+        String json = gson.toJson(jfrViewerService.combineExecutionTotalSelfTimeTable(uuid,params));
         return ResponseEntity.ok(json);
 //        return "uploaded-stateful-self-total-time-table";
     }
@@ -180,10 +180,26 @@ class StatefulJfrViewerController {
 //        return "uploaded-stateful-total-time-table";
     }
 
+    @GetMapping("/stateful-jfr/single/table/totalself/allocation/count")
+    ResponseEntity<?> getAllocationCountTotalSelfTimeStats(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
+//        model.addAttribute("table", jfrViewerService.getAllocationCountSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
+        String json = gson.toJson(jfrViewerService.combineAllocationCountTotalSelfTimeStats(uuid, params));
+        return ResponseEntity.ok(json);
+//        return "uploaded-stateful-total-time-table";
+    }
+
     @GetMapping("/stateful-jfr/single/table/total/allocation/size")
     ResponseEntity<?> getAllocationSizeTotalTimeStats(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
 //        model.addAttribute("table", jfrViewerService.getAllocationSizeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
         String json = gson.toJson(jfrViewerService.getAllocationSizeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
+        return ResponseEntity.ok(json);
+//        return "uploaded-stateful-total-time-table";
+    }
+
+    @GetMapping("/stateful-jfr/single/table/totalself/allocation/size")
+    ResponseEntity<?> getAllocationSizeTotalSelfTimeStats(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
+//        model.addAttribute("table", jfrViewerService.getAllocationSizeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
+        String json = gson.toJson(jfrViewerService.combineAllocationSizeTotalSelfTimeStats(uuid, params));
         return ResponseEntity.ok(json);
 //        return "uploaded-stateful-total-time-table";
     }
@@ -196,10 +212,26 @@ class StatefulJfrViewerController {
 //        return "uploaded-stateful-total-time-table";
     }
 
+    @GetMapping("/stateful-jfr/single/table/totalself/lock/count")
+    ResponseEntity<?> getLockCountTotalSelfTimeStats(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
+//        model.addAttribute("table", jfrViewerService.getLockCountSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
+        String json = gson.toJson(jfrViewerService.combineLockCountSamplesTotalSelfTimeStats(uuid, params));
+        return ResponseEntity.ok(json);
+//        return "uploaded-stateful-total-time-table";
+    }
+
     @GetMapping("/stateful-jfr/single/table/total/lock/time")
     ResponseEntity<?> getLockTimeTotalTimeStats(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
 //        model.addAttribute("table", jfrViewerService.getLockTimeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
         String json = gson.toJson(jfrViewerService.getLockTimeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
+        return ResponseEntity.ok(json);
+//        return "uploaded-stateful-total-time-table";
+    }
+
+    @GetMapping("/stateful-jfr/single/table/totalself/lock/time")
+    ResponseEntity<?> getLockTimeTotalSelfTimeStats(Model model, @RequestParam("id") UUID uuid, @RequestParam Map<String, String> params) {
+//        model.addAttribute("table", jfrViewerService.getLockTimeSamplesTimeStats(uuid, createConfig(params), TOTAL_TIME));
+        String json = gson.toJson(jfrViewerService.combineLockTimeSamplesTotalSelfTimeStats(uuid, params));
         return ResponseEntity.ok(json);
 //        return "uploaded-stateful-total-time-table";
     }
